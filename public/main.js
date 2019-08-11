@@ -19,7 +19,6 @@ let stream_cnt=0;
 let video;
 let myname = '';
 const masterName_title = document.getElementById('username');
-const masterName_val = document.getElementById('masterName');
 const me = document.getElementById('me');
 const opponent = document.getElementById('opponent');
 const ret = document.getElementById('ret');
@@ -58,7 +57,6 @@ let data = {
 }
 RockButton.addEventListener('click',()=>{
 if(buttonAlive && Object.keys(connections).length > 0){
-   
     MyStatus = 'completed';
     MyHand = 'Rock';
     console.log(MyStatus,OpponentStatus)
@@ -82,12 +80,9 @@ if(buttonAlive && Object.keys(connections).length > 0){
     }
 }
 
-
 });
 ScissorsButton.addEventListener('click',()=>{
     if(buttonAlive && Object.keys(connections).length > 0){
-       
-        
         MyStatus = 'completed';
         MyHand = 'Scissors';
         me.innerHTML = 'Me : Scissors'
@@ -109,12 +104,10 @@ ScissorsButton.addEventListener('click',()=>{
             alert('There is no partner.')
         }
     }
-
-
 });
+
 PaperButton.addEventListener('click',()=>{
 if(buttonAlive && Object.keys(connections).length > 0){
-    
     MyStatus = 'completed';
     MyHand = 'Paper';
     me.innerHTML = 'Me : Paper'
@@ -145,20 +138,14 @@ if (document.location.hash === "" || document.location.hash === undefined) {
     // create the unique token for this call 
     token =Math.round(Math.random()*10000);
     call_token = "#"+token;
-
     // set location.hash to the unique token for this call
     document.location.hash = token;
     alert(`Room is created , Your Room_Number is ${token}, `)
-    
 }else{
     call_token = document.location.hash;
 }
 //--------front button (pc use)
 Room_Number.innerHTML = 'Room_Number : '+ call_token.split('#')[1];
-
-
-
-
 
 
 // main async function 
@@ -167,7 +154,6 @@ async function run(){
            // alert('You are connected anonymously.')
             //throw new Error('cognito accessToke;n is not defined!!! please Sign In');
         }
-        
         localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         localVideo.srcObject = localStream;
         localVideo.play();
@@ -196,6 +182,10 @@ async function run(){
                     delete connections[connection_id];
                 }
             })
+            if(masterName_title.innerHTML != socketId){
+                alert("Master has left the game.!");
+                window.location.replace("index.html");
+            }
             //console.log(connections);
             // var parentDiv = video.parentElement;
             // video.parentElement.parentElement.removeChild(parentDiv);
@@ -211,73 +201,34 @@ async function run(){
             client_socket_ids.forEach(function(client_socket_id) {
                 if(socketId != client_socket_id && !connections[client_socket_id]){
                     connections[client_socket_id] = new RTCPeerConnection(peerConnectionConfig);
-                  
                     //if(client_socket_ids.indexOf(client_socket_id)<client_socket_ids.indexOf(client_))
+                    if(masterName == socketId){
                         let channel = connections[client_socket_id].createDataChannel(`chat${client_socket_id}`)
                         connections[client_socket_id].channel = channel
                         channel.onopen = function(event) {
-                            //console.log(`it is create peer`)
-                            //channel.send('it is create peer');
+                            console.log(`${client_socket_id} is createDataChannel which is opened`);
                           }
-                          /*channel.onmessage = function(event) {
-                            var data = JSON.parse(event.data)
+                          channel.onmessage = function(event) {
+                            var data = JSON.parse(event.data);
                             console.log(data)
-                            document.getElementById(`${data.id}`).style.filter = data.currentFilter;
-                            //if(connections[data.id])
-                            }*/
-                        
-                        //Wait for their ice candidate       
+                            Datahandler(data);
+                        }
+                    }
                         connections[client_socket_id].onicecandidate = function(event){
                             if(event.candidate != null) {
-                                console.log('SENDING ICE',client_socket_id);
+                                console.log('SENDING ICE CANDIDATE',client_socket_id);
                                 socket.emit('signal', client_socket_id, JSON.stringify({'ice': event.candidate}));
                             }
                         }
                         connections[client_socket_id].ondatachannel = function(event) {
-                            let channel = event.channel;
-                            //connections[client_socket_id].channel = channel
-                            
-                            channel.onopen = function(event) {
-                                  //console.log('it is receive peer')
-                              //channel.send('it is receive peer');
+                            connections[client_socket_id].channel = event.channel;
+                            connections[client_socket_id].channel.onopen = function(event) {
+                            console.log(`${client_socket_id} received DataChannel which is opened`);
                             }
-                            channel.onmessage = function(event) {
+                            connections[client_socket_id].channel.onmessage = function(event) {
                                 var data = JSON.parse(event.data);
                                 console.log(data)
-                                switch(data.type){
-                                    case 'selected':
-                                            OpponentStatus = 'completed';
-                                    break;
-                                    case 'finished':
-                                        if(!OpponentStatus){
-                                            let result = RpsJudge(MyHand,data.Hand);
-                                            opponent.innerHTML=`Opponent : ${data.Hand}`;
-                                            data.type = 'finished';
-                                            data.Hand = MyHand;
-                                            SendData(data);
-                                            ret.innerHTML = `latest result : ${result}`;
-                                            alert(`You ${result}`);
-                                            if(result == 'win'){
-                                                count++;
-                                                WinCount.innerHTML = `WinCount : ${count}`;
-                                            }
-                                            buttonAlive= true;
-                                            MyStatus= undefined; OpponentStatus = undefined;
-                                        }else{
-                                            let result = RpsJudge(MyHand,data.Hand);
-                                            opponent.innerHTML=`Opponent : ${data.Hand}`;
-                                            ret.innerHTML = `latest result : ${result}`;
-                                            alert(`You ${result}`);
-                                            if(result == 'win'){
-                                                count++;
-                                                WinCount.innerHTML = `WinCount : ${count}`;
-                                            }
-                                            buttonAlive= true;
-                                            MyStatus= undefined; OpponentStatus = undefined;
-                                        }
-                                    break;
-                                }
-                                
+                                Datahandler(data);
                             }
                         }
                     
@@ -303,8 +254,6 @@ async function run(){
 
         });
         socket.on('signal', gotMessageFromServer);
-        //Check Sign in
-        
 }
 
 //main function start
@@ -314,11 +263,11 @@ run().catch(err => {
 
 
 
+// ----------- function in run()
 
-//function in run()
+
+//Process message from server. it is used for sdp handshake or receiving ice candidate..
 function gotMessageFromServer(fromId, message, type) {
-        //Make sure it's not coming from yourself
-    if(type == 'sdp'){
         if(fromId != socketId) {
             var signal = JSON.parse(message)
                 if(signal.sdp){   
@@ -331,19 +280,7 @@ function gotMessageFromServer(fromId, message, type) {
                                 }).catch(e => console.log(e));        
                             }).catch(e => console.log(e));
                         }else if(signal.sdp.type == 'answer'){
-                           /* connections[fromId].ondatachannel = function(event) {
-                                let channel = event.channel;
-                                connections[fromId].channel = channel
-                                  channel.onopen = function(event) {
-                                      console.log('it is receive peer')
-                                  //channel.send('it is receive peer');
-                                }
-                                channel.onmessage = function(event) {
-                                    var data = JSON.parse(event.data)
-                                    console.log(data)
-                                    document.getElementById(`${data.id}`).style.filter = data.currentFilter;
-                                }
-                            }*/
+                          
                         }
                     }).catch(e => console.log(e));
                 }
@@ -353,8 +290,8 @@ function gotMessageFromServer(fromId, message, type) {
                     }
                 }                
             }
-        }
 }
+//get Remote Stream of partner
 function gotRemoteStream(event, id) {
     if(stream_cnt==0){
         remoteVideo.setAttribute('playsinline',true);
@@ -373,6 +310,7 @@ function gotRemoteStream(event, id) {
         stream_cnt=0;
     }
 }
+//sendData to partner
 function SendData(data) {
     console.log(connections)
  let connection_ids = Object.keys(connections)
@@ -386,7 +324,7 @@ function SendData(data) {
         })
     }
 }
-
+// Judge won or lose or die
 function RpsJudge(MyHand, OpponentHand){
     switch(MyHand){
         case "Rock" :
@@ -413,5 +351,41 @@ function RpsJudge(MyHand, OpponentHand){
                 }else{
                     return 'lose';
                 }
+    }
+}
+// handle data through rctdatachannel
+function Datahandler(data){
+    switch(data.type){
+        case 'selected':
+                OpponentStatus = 'completed';
+        break;
+        case 'finished':
+            if(!OpponentStatus){
+                let result = RpsJudge(MyHand,data.Hand);
+                opponent.innerHTML=`Opponent : ${data.Hand}`;
+                data.type = 'finished';
+                data.Hand = MyHand;
+                SendData(data);
+                ret.innerHTML = `latest result : ${result}`;
+                alert(`You ${result}`);
+                if(result == 'win'){
+                    count++;
+                    WinCount.innerHTML = `WinCount : ${count}`;
+                }
+                buttonAlive= true;
+                MyStatus= undefined; OpponentStatus = undefined;
+            }else{
+                let result = RpsJudge(MyHand,data.Hand);
+                opponent.innerHTML=`Opponent : ${data.Hand}`;
+                ret.innerHTML = `latest result : ${result}`;
+                alert(`You ${result}`);
+                if(result == 'win'){
+                    count++;
+                    WinCount.innerHTML = `WinCount : ${count}`;
+                }
+                buttonAlive= true;
+                MyStatus= undefined; OpponentStatus = undefined;
+            }
+        break;
     }
 }
