@@ -19,6 +19,7 @@ let inboundStream = null;
 let stream_cnt=0;
 let video;
 let myname = '';
+let masterName ;
 const masterName_title = document.getElementById('username');
 const me = document.getElementById('me');
 const opponent = document.getElementById('opponent');
@@ -183,7 +184,7 @@ async function run(){
                     delete connections[connection_id];
                 }
             })
-            if(masterName_title.innerHTML != socketId){
+            if(this.masterName != socketId){
                 alert("Master has left the game.!");
                 window.location.replace("index.html");
             }
@@ -196,6 +197,7 @@ async function run(){
             window.location.replace("index.html");
         })
         socket.on('user-joined', function(id, client_socket_ids, masterName){
+            this.masterName = masterName;
             masterName_title.innerHTML = masterName + `'s session`;
             console.log(connections)
             console.log(id, client_socket_ids, masterName)
